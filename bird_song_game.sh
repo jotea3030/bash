@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # Bird Song Game - Bash Version
 # Requires: curl, jq, and an audio player (afplay on macOS, mpg123/ffplay/mplayer on Linux)
