@@ -243,17 +243,22 @@ play_audio() {
     local filename="$1"
     
     if [[ "$OSTYPE" == "darwin"* ]]; then
-        timeout 12s afplay "$filename" 2>/dev/null || true
+        # macOS - afplay doesn't need timeout, it stops automatically
+        afplay "$filename" 2>/dev/null || true
     else
         # Try different players
         if command -v mpg123 &> /dev/null; then
-            timeout 12s mpg123 -q "$filename" 2>/dev/null || true
+            if command -v timeout &> /dev/null; then
+                timeout 12s mpg123 -q "$filename" 2>/dev/null || true
+            else
+                mpg123 -q "$filename" 2>/dev/null || true
+            fi
         elif command -v ffplay &> /dev/null; then
-            timeout 12s ffplay -nodisp -autoexit -t 10 "$filename" 2>/dev/null || true
+            ffplay -nodisp -autoexit -t 10 "$filename" 2>/dev/null || true
         elif command -v mplayer &> /dev/null; then
-            timeout 12s mplayer "$filename" 2>/dev/null || true
+            mplayer "$filename" 2>/dev/null || true
         elif command -v play &> /dev/null; then
-            timeout 12s play "$filename" 2>/dev/null || true
+            play "$filename" 2>/dev/null || true
         else
             echo "No audio player found"
             return 1
