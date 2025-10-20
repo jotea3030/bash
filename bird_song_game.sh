@@ -169,7 +169,7 @@ check_dependencies() {
         for player in mpg123 ffplay mplayer play; do
             if command -v "$player" &> /dev/null; then
                 has_player=true
-                break
+local file_url=$(echo "$response" | jq -r '.recordings[] | select(.file != null and .file != "") | select(.file | contains("xeno-canto.org")) | .file' | head -n 1)
             fi
         done
     fi
