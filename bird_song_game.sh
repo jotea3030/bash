@@ -225,13 +225,34 @@ get_recording() {
 # Download audio file
 download_audio() {
     local audio_url="$1"
-    local temp_file="${TEMP_DIR}/bird-$RANDOM.mp3"
+    local temp_file="${TEMP_DIR}/bird-$RANDOM"
     
     echo "Debug: Downloading from: $audio_url" >&2
     echo "Debug: Saving to: $temp_file" >&2
     
-    if curl -v --max-time 60 -o "$temp_file" "$audio_url" 2>&1 | grep -q "HTTP.*200"; then
+    # Download without forcing .mp3 extension
+    if curl -L -s --max-time 60 -o "$temp_file" "$audio_url"; then
         if [[ -s "$temp_file" ]]; then
+            # Detect actual file type
+            local file_type=$(file -b "$temp_file" 2>/dev/null || echo "unknown")
+            echo "Debug: File type detected: $file_type" >&2
+            
+            # Rename with appropriate extension
+            if echo "$file_type" | grep -qi "mpeg.*audio"; then
+                mv "$temp_file" "${temp_file}.mp3"
+                temp_file="${temp_file}.mp3"
+            elif echo "$file_type" | grep -qi "ogg"; then
+                mv "$temp_file" "${temp_file}.ogg"
+                temp_file="${temp_file}.ogg"
+            elif echo "$file_type" | grep -qi "wav"; then
+                mv "$temp_file" "${temp_file}.wav"
+                temp_file="${temp_file}.wav"
+            else
+                # Try as mp3 anyway
+                mv "$temp_file" "${temp_file}.mp3"
+                temp_file="${temp_file}.mp3"
+            fi
+            
             echo "Debug: File downloaded successfully, size: $(stat -f%z "$temp_file" 2>/dev/null || stat -c%s "$temp_file" 2>/dev/null) bytes" >&2
             echo "$temp_file"
             return 0
@@ -239,10 +260,10 @@ download_audio() {
             echo "Debug: File downloaded but is empty" >&2
         fi
     else
-        echo "Debug: curl failed or non-200 response" >&2
+        echo "Debug: curl failed" >&2
     fi
     
-    rm -f "$temp_file"
+    rm -f "$temp_file" "${temp_file}."*
     return 1
 }
 
@@ -255,14 +276,17 @@ play_audio() {
     echo "Debug: OSTYPE: $OSTYPE" >&2
     
     if [[ "$OSTYPE" == "darwin"* ]]; then
-        # macOS - afplay doesn't need timeout, it stops automatically
-        echo "Debug: Using afplay on macOS" >&2
-        if command -v afplay &> /dev/null; then
-            echo "Debug: afplay found, starting playback..." >&2
-            afplay "$filename"
+        # macOS - try ffplay first (better format support), then afplay
+        if command -v ffplay &> /dev/null; then
+            echo "Debug: Using ffplay on macOS" >&2
+            ffplay -nodisp -autoexit -loglevel quiet "$filename" 2>/dev/null
+            echo "Debug: ffplay finished" >&2
+        elif command -v afplay &> /dev/null; then
+            echo "Debug: Using afplay on macOS" >&2
+            afplay "$filename" 2>&1
             echo "Debug: afplay finished" >&2
         else
-            echo "Debug: afplay not found!" >&2
+            echo "Error: No audio player found. Please install ffmpeg: brew install ffmpeg" >&2
             return 1
         fi
     else
