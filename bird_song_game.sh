@@ -227,11 +227,19 @@ download_audio() {
     local audio_url="$1"
     local temp_file="${TEMP_DIR}/bird-$RANDOM.mp3"
     
-    if curl -s --max-time 60 -o "$temp_file" "$audio_url"; then
+    echo "Debug: Downloading from: $audio_url" >&2
+    echo "Debug: Saving to: $temp_file" >&2
+    
+    if curl -v --max-time 60 -o "$temp_file" "$audio_url" 2>&1 | grep -q "HTTP.*200"; then
         if [[ -s "$temp_file" ]]; then
+            echo "Debug: File downloaded successfully, size: $(stat -f%z "$temp_file" 2>/dev/null || stat -c%s "$temp_file" 2>/dev/null) bytes" >&2
             echo "$temp_file"
             return 0
+        else
+            echo "Debug: File downloaded but is empty" >&2
         fi
+    else
+        echo "Debug: curl failed or non-200 response" >&2
     fi
     
     rm -f "$temp_file"
