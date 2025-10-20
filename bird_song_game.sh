@@ -169,7 +169,7 @@ check_dependencies() {
         for player in mpg123 ffplay mplayer play; do
             if command -v "$player" &> /dev/null; then
                 has_player=true
-local file_url=$(echo "$response" | jq -r '.recordings[] | select(.file != null and .file != "") | select(.file | contains("xeno-canto.org")) | .file' | head -n 1)
+                break
             fi
         done
     fi
@@ -362,8 +362,9 @@ play_round() {
     local file_size=$(stat -f%z "$audio_file" 2>/dev/null || stat -c%s "$audio_file" 2>/dev/null)
     echo "✓ Audio ready ($((file_size / 1024)) KB)"
     
-    # Generate options
-    mapfile -t options < <(generate_options "$correct_bird")
+    # Generate options (FIXED LINE - compatible with older bash)
+    local IFS=$'\n'
+    options=($(generate_options "$correct_bird"))
     
     # Play audio
     echo ""
